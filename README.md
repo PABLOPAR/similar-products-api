@@ -1,28 +1,157 @@
-# Getting Started
+Similar Products API
 
-### Reference Documentation
-For further reference, please consider the following sections:
+API REST desarrollada en Spring Boot que expone un endpoint para obtener productos similares a uno dado, integrándose con un servicio externo simulado mediante WebClient.
 
-* [Official Apache Maven documentation](https://maven.apache.org/guides/index.html)
-* [Spring Boot Maven Plugin Reference Guide](https://docs.spring.io/spring-boot/3.5.10/maven-plugin)
-* [Create an OCI image](https://docs.spring.io/spring-boot/3.5.10/maven-plugin/build-image.html)
-* [Spring Web](https://docs.spring.io/spring-boot/3.5.10/reference/web/servlet.html)
-* [Spring Reactive Web](https://docs.spring.io/spring-boot/3.5.10/reference/web/reactive.html)
-* [Validation](https://docs.spring.io/spring-boot/3.5.10/reference/io/validation.html)
+Este proyecto implementa:
 
-### Guides
-The following guides illustrate how to use some features concretely:
+Arquitectura en capas (API / Application / Domain / Infrastructure)
 
-* [Building a RESTful Web Service](https://spring.io/guides/gs/rest-service/)
-* [Serving Web Content with Spring MVC](https://spring.io/guides/gs/serving-web-content/)
-* [Building REST services with Spring](https://spring.io/guides/tutorials/rest/)
-* [Building a Reactive RESTful Web Service](https://spring.io/guides/gs/reactive-rest-service/)
-* [Validation](https://spring.io/guides/gs/validating-form-input/)
+Manejo de errores consistente
 
-### Maven Parent overrides
+Timeouts y degradación ante fallos del upstream
 
-Due to Maven's design, elements are inherited from the parent POM to the project POM.
-While most of the inheritance is fine, it also inherits unwanted elements like `<license>` and `<developers>` from the parent.
-To prevent this, the project POM contains empty overrides for these elements.
-If you manually switch to a different parent and actually want the inheritance, you need to remove those overrides.
+Tests unitarios del caso de uso principal
+
+Tecnologías
+
+Java 17
+
+Spring Boot 3.x
+
+Spring Web + WebClient (WebFlux)
+
+Maven
+
+Docker (para el servicio mock)
+
+JUnit 5 + Mockito
+
+Lombok
+
+Arquitectura (alto nivel)
+com.globant.similarproducts
+├── api
+│   └── controller
+├── application
+│   ├── dto
+│   └── usecase
+├── domain
+│   ├── model
+│   └── exception
+└── infrastructure
+    ├── client
+    ├── config
+    └── repository
+
+Endpoint principal
+Obtener productos similares
+GET /product/{productId}/similar
+
+Ejemplo
+curl http://localhost:5000/product/1/similar
+
+Respuesta exitosa (200)
+[
+  {
+    "id": "2",
+    "name": "Dress",
+    "price": 19.99,
+    "availability": true
+  },
+  {
+    "id": "4",
+    "name": "Boots",
+    "price": 39.99,
+    "availability": true
+  }
+]
+
+
+⚠️ Los productos no disponibles o con error en el upstream se omiten (degradación).
+
+Manejo de errores
+Escenario	Código
+Producto base inexistente	404 Not Found
+Upstream caído / timeout	502 Bad Gateway
+Error inesperado	500 Internal Server Error
+
+Ejemplo:
+
+curl http://localhost:5000/product/999/similar
+
+{
+  "status": 404,
+  "error": "Not Found",
+  "message": "Product 999 not found"
+}
+
+Servicio externo (mock)
+
+La API depende de un servicio mock que expone:
+
+GET /product/{id}
+
+GET /product/{id}/similarids
+
+Levantar el mock
+
+Desde el repo del mock:
+
+docker compose up -d simulado
+
+
+El mock corre en:
+
+http://localhost:3001
+
+Configuración
+
+application.properties
+
+server.port=5000
+
+external.product-api.base-url=http://localhost:3001
+external.product-api.timeout-ms=2000
+
+Actuator
+
+Disponible en:
+
+curl http://localhost:5000/actuator
+curl http://localhost:5000/actuator/mappings
+
+Build & Run
+Compilar
+./mvnw clean package
+
+Ejecutar
+./mvnw spring-boot:run
+
+
+O directamente desde IntelliJ usando la clase:
+
+SimilarProductsApiApplication
+
+Tests
+
+Se incluyen tests unitarios para el caso de uso principal:
+
+./mvnw test
+
+
+Clases testeadas:
+
+GetSimilarProductsUseCase
+
+Commits recomendados (convención)
+
+Ejemplos usados en este proyecto:
+
+feat: add similar products endpoint
+
+feat: add upstream timeout and error handling
+
+test: add unit tests for GetSimilarProductsUseCase
+
+docs: add README with setup and usage instructions
 
