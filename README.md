@@ -174,3 +174,17 @@ Given the scope and time constraints of this exercise, tests focus on:
 - controller tests (`@WebMvcTest`) to validate REST behavior and error mapping
 
 End-to-end integration tests with Docker were intentionally avoided to reduce flakiness and environment dependencies (Docker daemon availability, ports, startup timing), while integration was validated manually using the provided mock service.
+
+## Testing notes and design decisions
+### Use of @MockBean in controller tests
+
+In the controller layer tests (`@WebMvcTest`), `@MockBean` is used to inject mocked dependencies into the Spring MVC test context.
+
+Although `@MockBean` is marked as deprecated in recent Spring Boot versions, it is still a valid and widely used approach for slice tests, especially when testing controllers in isolation.
+
+This decision was made deliberately for the following reasons:
+- It provides the clearest and most readable way to mock Spring-managed beans.
+- It allows proper isolation of the controller from the application and infrastructure layers.
+- It aligns with Spring’s testing documentation and common industry practice.
+
+The focus was placed on clarity, maintainability, and correct layering rather than prematurely adopting more verbose alternatives that add complexity without improving test quality.
