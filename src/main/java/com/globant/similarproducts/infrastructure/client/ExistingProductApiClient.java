@@ -7,7 +7,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import com.globant.similarproducts.domain.exception.ProductNotFoundException;
 import org.springframework.http.HttpStatusCode;
-
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import java.util.concurrent.TimeoutException;
 import java.util.List;
 
 public class ExistingProductApiClient {
@@ -32,11 +33,15 @@ public class ExistingProductApiClient {
                         return response.createException().flatMap(Mono::error);
                     }
 
-                    // el mock devuelve ["2","3","4"] o [2,3,4] según versión
-                    return response.bodyToMono(
-                            new ParameterizedTypeReference<List<String>>() {}
-                    );
+                    return response.bodyToMono(new ParameterizedTypeReference<List<String>>() {});
                 })
+                .onErrorMap(
+                        ex -> ex instanceof WebClientRequestException
+                                || ex instanceof java.util.concurrent.TimeoutException,
+                        ex -> new UpstreamServiceException(
+                                "Upstream unreachable calling similarids for: " + productId, ex
+                        )
+                )
                 .block();
 
         return ids == null ? List.of() : ids;
@@ -47,15 +52,32 @@ public class ExistingProductApiClient {
         return webClient.get()
                 .uri("/product/{productId}", productId)
                 .exchangeToMono(response -> {
-                    if (response.statusCode().value() == 404) {
-                        return Mono.empty();
+                    HttpStatusCode status = response.statusCode();
+
+                    if (status.value() == 404) {
+                        return Mono.error(new ProductNotFoundException(productId));
                     }
-                    if (response.statusCode().isError()) {
-                        return response.createException()
-                                .flatMap(ex -> Mono.error(new UpstreamServiceException(
-                                        "Upstream error getting product: " + productId, ex)));
+
+                    if (status.isError()) {
+                        return response.createException().flatMap(Mono::error);
                     }
+
                     return response.bodyToMono(ExternalProductDetailDto.class);
-                });
+                })
+                .onErrorMap(
+                        ex -> ex instanceof WebClientRequestException || isTimeout(ex),
+                        ex -> new UpstreamServiceException("Upstream unreachable calling product detail for: " + productId, ex)
+                );
     }
+
+    private boolean isTimeout(Throwable ex) {
+        Throwable t = ex;
+        while (t != null) {
+            if (t instanceof TimeoutException) return true;
+            t = t.getCause();
+        }
+        return false;
+    }
+
+
 }
