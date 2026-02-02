@@ -1,6 +1,7 @@
 package com.globant.similarproducts.application.usecase;
 
 import com.globant.similarproducts.application.usecase.GetSimilarProductsUseCase;
+import com.globant.similarproducts.domain.exception.ProductNotFoundException;
 import com.globant.similarproducts.domain.model.Product;
 import com.globant.similarproducts.domain.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,6 +68,19 @@ public class GetSimilarProductsUseCaseTest {
         assertTrue(result.isEmpty());
 
         verify(productRepository).findSimilarIds(productId);
+        verifyNoMoreInteractions(productRepository);
+    }
+
+    @Test
+    void execute_shouldThrowProductNotFound_whenBaseProductDoesNotExist() {
+        String productId = "999";
+        when(productRepository.findSimilarIds(productId))
+                .thenThrow(new ProductNotFoundException(productId));
+
+        assertThrows(ProductNotFoundException.class, () -> useCase.execute(productId));
+
+        verify(productRepository).findSimilarIds(productId);
+        verify(productRepository, never()).findProductById(anyString());
         verifyNoMoreInteractions(productRepository);
     }
 }

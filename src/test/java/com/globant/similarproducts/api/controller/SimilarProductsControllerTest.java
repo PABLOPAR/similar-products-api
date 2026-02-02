@@ -2,6 +2,7 @@ package com.globant.similarproducts.api.controller;
 
 import com.globant.similarproducts.application.usecase.GetSimilarProductsUseCase;
 import com.globant.similarproducts.domain.exception.ProductNotFoundException;
+import com.globant.similarproducts.domain.exception.UpstreamServiceException;
 import com.globant.similarproducts.domain.model.Product;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,5 +45,14 @@ class SimilarProductsControllerTest {
         mockMvc.perform(get("/product/999/similar"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void getSimilar_shouldReturn502_whenUpstreamFails() throws Exception {
+        when(useCase.execute("1"))
+                .thenThrow(new UpstreamServiceException("Upstream down", new RuntimeException()));
+
+        mockMvc.perform(get("/product/1/similar"))
+                .andExpect(status().isBadGateway());
     }
 }
