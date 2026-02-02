@@ -155,3 +155,22 @@ test: add unit tests for GetSimilarProductsUseCase
 
 docs: add README with setup and usage instructions
 
+## Design decisions
+
+### Reactive client with imperative application layer
+This project uses `WebClient` (Spring WebFlux) to consume the external product API because it provides strong support for timeouts and fine-grained HTTP error handling.
+The application/use-case layer remains imperative and returns plain Java types (e.g. `List<Product>`). For that reason the infrastructure client uses `.block()` at the boundary.
+This keeps the domain/application layer free of reactive types (`Mono`/`Flux`) and aligns with a hexagonal/DDD approach.
+
+**Trade-off:** blocking reduces the benefit of reactive end-to-end execution. A possible improvement would be to migrate the use case and controller to reactive types and use `flatMapSequential` to keep ordering while fetching in parallel.
+
+### Sequential vs parallel resolution
+Similar product details are resolved in the same order returned by the external API. The current implementation is sequential for simplicity and predictable behavior.
+A potential improvement is to fetch details concurrently while preserving order (e.g. using `flatMapSequential` in a reactive flow or `CompletableFuture` with a bounded executor).
+
+### Testing strategy
+Given the scope and time constraints of this exercise, tests focus on:
+- unit tests for the main use case (business rules)
+- controller tests (`@WebMvcTest`) to validate REST behavior and error mapping
+
+End-to-end integration tests with Docker were intentionally avoided to reduce flakiness and environment dependencies (Docker daemon availability, ports, startup timing), while integration was validated manually using the provided mock service.
