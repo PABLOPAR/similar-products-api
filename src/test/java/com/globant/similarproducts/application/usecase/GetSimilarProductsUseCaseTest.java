@@ -1,4 +1,4 @@
-package com.globant.similarproducts.usecase;
+package com.globant.similarproducts.application.usecase;
 
 import com.globant.similarproducts.application.usecase.GetSimilarProductsUseCase;
 import com.globant.similarproducts.domain.model.Product;
